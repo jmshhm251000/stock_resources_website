@@ -63,27 +63,35 @@ function findCIK(ticker) {
 // Fetch Recent Filings by CIK
 // ==========================
 async function getRecentFilings(cik) {
-  const url = `https://data.sec.gov/submissions/CIK${cik}.json`;
-  const resp = await fetch(url);
-  if (!resp.ok) {
-    throw new Error(`Failed to fetch filings for CIK ${cik}`);
+    const url = `https://data.sec.gov/submissions/CIK${cik}.json`;
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      throw new Error(`Failed to fetch filings for CIK ${cik}`);
+    }
+  
+    const data = await resp.json();
+    const { form, filingDate, accessionNumber, primaryDocument } = data.filings.recent;
+  
+    const filings = form.map((f, i) => ({
+      form: f,
+      date: filingDate[i],
+      accessionNumber: accessionNumber[i],
+      doc: primaryDocument[i]
+    }));
+  
+    const formTypes = ["10-K", "10-Q", "8-K"];
+    let selected = [];
+  
+    for (const type of formTypes) {
+      const subset = filings
+        .filter(f => f.form === type)
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 5);
+      selected = selected.concat(subset);
+    }
+  
+    return selected;
   }
-
-  const data = await resp.json();
-  const { form, filingDate, accessionNumber, primaryDocument } = data.filings.recent;
-
-  const filings = form.map((f, i) => ({
-    form: f,
-    date: filingDate[i],
-    accessionNumber: accessionNumber[i],
-    doc: primaryDocument[i]
-  }))
-  .filter(f => ["10-K", "10-Q", "8-K"].includes(f.form))
-  .sort((a, b) => b.date.localeCompare(a.date))
-  .slice(0, 5);
-
-  return filings;
-}
 
 // ==========================
 // Display Filings in Table
